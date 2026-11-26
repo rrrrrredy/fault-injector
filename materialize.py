@@ -53,7 +53,8 @@ def materialize(work, evidence, cli):
     fixture, test_name = source["nodeid"].split("::")
     target = f"{Path(fixture).stem}::{test_name}"
     verifier = ["python", "-B", "-m", "pytest", "-q", "-s", "--tb=short", "--color=no",
-                "-p", "no:cacheprovider", "--noconftest", "-o", "addopts=", "--pyargs", target]
+                "-p", "no:cacheprovider", "--noconftest", "-o", "addopts=", "-o", "filterwarnings=",
+                "--pyargs", target]
     payload = BlueprintCreate(
         name=source["id"], kind="code", repository_path=str(work / "humanize"),
         base_revision=source["fault"], solution_revision=source["fix"], external_ref=source["issue"],
@@ -82,7 +83,10 @@ def materialize(work, evidence, cli):
         prefix = f"case-{index}"
         validation = case.validation
         if not validation.objective_gate_passed:
-            raise RuntimeError(f"{prefix} did not pass the Factory gate: {validation.details}; {engine.invocations}")
+            failure = evidence / "failed-gate.json"
+            write_json(failure, {"case": prefix, "validation": validation.model_dump(mode="json"),
+                                 "invocations": {k: v for k, v in engine.invocations.items() if k.startswith(prefix)}})
+            raise RuntimeError(f"{prefix} did not pass the Factory gate: {validation.details} See {failure}")
         first = factory.fingerprints[f"{prefix}-baseline-a"]
         second = factory.fingerprints[f"{prefix}-baseline-b"]
         if not validation.reset_verified or not (first == second == validation.baseline_manifest_ref):
