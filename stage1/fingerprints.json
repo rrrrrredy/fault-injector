@@ -1,0 +1,233 @@
+{
+  "families": {
+    "docopt/docopt": {
+      "core_file_count": 1,
+      "core_sha256": "383b661ae63692d45a61c944bd584884d3fbc2c0e0d0cc0fdb21ceb853b78687",
+      "metadata_sha256": "ee5614bf4f2fb5727c6645f314f9d98df9dc976b6f7974918d933bb6c98f838c",
+      "notice_sha256": "b2959a980bc25f5d5e020d7a31777b7184aace6eb160acc80619f85edf646f19",
+      "package": "docopt",
+      "repo_family_id": "family-404d5b738344aefd",
+      "roots": [
+        "9b2cd0a099ecdb888b582b8709e6989760b308c0"
+      ]
+    },
+    "idanmiara/ordered-set": {
+      "core_file_count": 1,
+      "core_sha256": "e9e029a46f541a2f83278be78914ede34abcc586087503835674727877729730",
+      "metadata_sha256": "481e54247e7690052248804ce4fbb369e6177ef1556b143ae655d41a13922c3c",
+      "notice_sha256": "525c853d61dc1bcfc21485e9228f44059f53d76e4a1b99522a5ea6b010097feb",
+      "package": "stableset",
+      "repo_family_id": "family-0c83e070629a7407",
+      "roots": [
+        "bbace57408935bc323cf90a0d8ae39234038927e"
+      ]
+    },
+    "jpvanhal/inflection": {
+      "core_file_count": 1,
+      "core_sha256": "c456b02c2661bb6754a5135504548636a7f8c880c365cd63e2aaca5b1f2960c1",
+      "metadata_sha256": "1590764efec90ba1d5f9b45d31a48adee05e938feb1ce19d3e37dcb642b25722",
+      "notice_sha256": "4a3f52ac1012a90db398e4c55f1d1bea501dddafef8a4b3adb7533b1d820e148",
+      "package": "inflection",
+      "repo_family_id": "family-b4c497b02fa95c4b",
+      "roots": [
+        "5f0b5795c204191429185f399648aef82acae727"
+      ]
+    },
+    "mewwts/addict": {
+      "core_file_count": 2,
+      "core_sha256": "f2b1d638b24a41e7ef53856dfcceb00b4df73c9edf255740e768e8d6579c3f0f",
+      "metadata_sha256": "339edf5ba521ca56487fd6a0ea5ce04fc56b46958431d612200d0534bc4c9060",
+      "notice_sha256": "ca488d33c512d0b226142090af90e89ae266a901a293f89fd642dfec931e22c1",
+      "package": "addict",
+      "repo_family_id": "family-4f4b610184e38499",
+      "roots": [
+        "5292df34e54cc58d8cc28b3be4920aea38a6b588"
+      ]
+    },
+    "pallets-eco/blinker": {
+      "core_file_count": 3,
+      "core_sha256": "c4d505b6cb8b1b3cb9bd7c3079597b2d1accdc45dd5b291d0ca847386e95caa7",
+      "metadata_sha256": "15282c47ae7a34e94d54691d8146dbbb708e6f9c270298fa68edae446a73fefc",
+      "notice_sha256": "9eb73a1f38597a4aa17025d2ae1be3839624c795e985d4f0e9769ce29faca467",
+      "package": "blinker",
+      "repo_family_id": "family-44f852589ce323e8",
+      "roots": [
+        "c2d9461914c3624b49b596e3bd5d76dc32b406d1"
+      ]
+    },
+    "python-humanize/humanize": {
+      "core_file_count": 6,
+      "core_sha256": "0c4ee8c8144183675d7336fa32ab76072e1d99184be47f68f7ff1d9117de2abe",
+      "metadata_sha256": "125ae9dd4e9318b8a871132ca0201e16940a6bf168e4ea69d5a26fdc7ce4c18b",
+      "notice_sha256": "8ba6c18112a431400ad3c743f70670079b302545d98884fc2f28a91c383a0380",
+      "package": "humanize",
+      "repo_family_id": "family-ddd875612557a1b1",
+      "roots": [
+        "4267a54777e2ef1c71146d516429c6047a6de983"
+      ]
+    },
+    "rspeer/ordered-set": {
+      "core_file_count": 1,
+      "core_sha256": "e01d599cf15a2a1dd36915207ad5c5f07050a220875927d38d6a66e04264cb37",
+      "metadata_sha256": "6ae4514d20de3f81aa4ca513b38cac165af0cd6c876f021159a3c51e457358bb",
+      "notice_sha256": "0cf8f55f36dc1306b3fe89bf29e29a0c742f279f038d149244319e593ab16ca4",
+      "package": "ordered-set",
+      "repo_family_id": "family-0c83e070629a7407",
+      "roots": [
+        "bbace57408935bc323cf90a0d8ae39234038927e"
+      ]
+    },
+    "termcolor/termcolor": {
+      "core_file_count": 3,
+      "core_sha256": "b55e43c98b010ec80af495651ed3fdbad92a18332efb7b8bf0e3f91dda2ff100",
+      "metadata_sha256": "0b63eede365c9a6af4e28f291a2c3a71f5a2c80b95347e8090c78261e441332e",
+      "notice_sha256": "e79b6bd82962c1330caaa7c42278567b08667777673f8e2371a624d5715d4c0e",
+      "package": "termcolor",
+      "repo_family_id": "family-82a9e720fc5c9314",
+      "roots": [
+        "ec4bf7dd54ccb54002a62dc098d020fb73e6357e"
+      ]
+    },
+    "wroberts/pytimeparse": {
+      "core_file_count": 2,
+      "core_sha256": "b286308747257a890bcf470687c2c5350b89da1559b563cf0558ae794381027e",
+      "metadata_sha256": "aad456ca981931f88c25208222f6e2e428981cf5f897c2f3086f559b0fb25fc1",
+      "notice_sha256": "82202c53d7c297d0199f35d98aa85439d322a7b68347cc2a31f4f4edfdf473e3",
+      "package": "pytimeparse",
+      "repo_family_id": "family-c871410be64f648f",
+      "roots": [
+        "0bb68b9653388a761108e503cace38c7d9a5a3af"
+      ]
+    }
+  },
+  "healthy": {
+    "addict": {
+      "input_files": {
+        "addict/__init__.py": "c6694d898615a000f7fc57e681f38cd9c737c08d7b19282c3013836c546cfe66",
+        "addict/addict.py": "49c39f72568033bba0c99a17396d871cbf60097b7f5cf7be8b96d32e263cb9f5",
+        "licenses/LICENSE": "ca488d33c512d0b226142090af90e89ae266a901a293f89fd642dfec931e22c1",
+        "prompt.txt": "f58e351bc79b6bbc9aed9bf5fb618bf44e74756c319b842b108dc405a702e91e",
+        "public_tests/test_visible.py": "dbf958549ec0bf6656ee130f9b27f8636bf68c4a1674c75df2be60fde8f91eb8",
+        "task.json": "0e1d161e5bc498ce007191d22ac00adaf7e380ed6109fc088897693c2c2637b0"
+      },
+      "inputs_sha256": "85d4b82c0a3f27fde0ec05c68fb98a5515e783d40cbce7bfd60d9c26767069d9",
+      "oracle_node": "oracle_tests/test_heldout.py::test_addict_heldout",
+      "oracle_sha256": "fca57aa6617b40fe46f0ea3c239914b23cf9368b333a7d78d4c60a0a1609a311",
+      "prompt_sha256": "f58e351bc79b6bbc9aed9bf5fb618bf44e74756c319b842b108dc405a702e91e",
+      "public_node": "public_tests/test_visible.py::test_addict_visible",
+      "repo_family_id": "family-4f4b610184e38499",
+      "split": "eval_unseen",
+      "tokens": 1273
+    },
+    "blinker": {
+      "input_files": {
+        "licenses/LICENSE.txt": "9eb73a1f38597a4aa17025d2ae1be3839624c795e985d4f0e9769ce29faca467",
+        "prompt.txt": "d9eb55f48ffd3f85fea98668e8596f2dd91cd9b2de4b69f94312120553483664",
+        "public_tests/test_visible.py": "10536966ae5d1167307692519d5ab319a632c16bac5745f3f1d5e39bf513abfe",
+        "src/blinker/__init__.py": "23611d66aa72e0bca35f5ec79f5cb32465828de2da55a3f3b0c80790b7e3fdc4",
+        "src/blinker/_utilities.py": "d09ede7975d3531d08bdff1ab1fa71d32715929d04a9faa78f5d7bc769985fd1",
+        "src/blinker/base.py": "4290eebd75dcc09178f65501707e418924f8e91cfdc121bb556fe9ecdff4dbb3",
+        "task.json": "f15b850c92692fc8bccfc2a317c0c1357821d71d42cae4244882eb81480cf4ea"
+      },
+      "inputs_sha256": "ef6c1aa55319338b7784d6764d2acaf3cbb0d4caa7955f8adbba8d8a9bcfbd76",
+      "oracle_node": "oracle_tests/test_heldout.py::test_blinker_heldout",
+      "oracle_sha256": "4194bfc9b17f6772bedfdcafdb7ccd89e22b2c9922ba7211dbefdd398da1f9d2",
+      "prompt_sha256": "d9eb55f48ffd3f85fea98668e8596f2dd91cd9b2de4b69f94312120553483664",
+      "public_node": "public_tests/test_visible.py::test_blinker_visible",
+      "repo_family_id": "family-44f852589ce323e8",
+      "split": "train",
+      "tokens": 4779
+    },
+    "docopt": {
+      "input_files": {
+        "docopt.py": "0a3ff54386f2d622b0715924b1c5785cba907c8c539352c00bb3c46653850331",
+        "licenses/LICENSE-MIT": "b2959a980bc25f5d5e020d7a31777b7184aace6eb160acc80619f85edf646f19",
+        "prompt.txt": "f5677c8c4fb928373dfbc1e8aa37d1fb303b9995d3e99db6adb24a56bd296031",
+        "public_tests/test_visible.py": "9995548c0f7f489c67252837ea667bd96d819a46b6adb6219d09c4f0703671cd",
+        "task.json": "4a86c1e4f0b78c4dfa3f1f23780ae382175424147842eb4268bb9115a44099d7"
+      },
+      "inputs_sha256": "19caceec82e8de80890f0ea39796c116191f2b591179fb3c22a79e492354b593",
+      "oracle_node": "oracle_tests/test_heldout.py::test_docopt_heldout",
+      "oracle_sha256": "84e7b80aa5b1799477e31285f1a7b86dc8fc9da60c9a2b3747a2a38c7883dab6",
+      "prompt_sha256": "f5677c8c4fb928373dfbc1e8aa37d1fb303b9995d3e99db6adb24a56bd296031",
+      "public_node": "public_tests/test_visible.py::test_docopt_visible",
+      "repo_family_id": "family-404d5b738344aefd",
+      "split": "eval_unseen",
+      "tokens": 4813
+    },
+    "ordered": {
+      "input_files": {
+        "licenses/MIT-LICENSE": "0cf8f55f36dc1306b3fe89bf29e29a0c742f279f038d149244319e593ab16ca4",
+        "ordered_set/__init__.py": "f4cd061fb3f53043a0f95439bcfbe455c136f8df3de5041e6227873313f90d7d",
+        "prompt.txt": "cca4032d9a3415d4c46f39e2efb9c8850b2b9aa88152752a81704375290c68d1",
+        "public_tests/test_visible.py": "25f9b7984c7cff42f22aec7cacb3c22a29059f7c33ac8815e27cd75fee006e54",
+        "task.json": "befc568cb5b958eaa178db7cca0ffb854ccd4b75a4e27f9d55f546349ef92d0b"
+      },
+      "inputs_sha256": "2a4f1890c5ae5a6f79b5dd7e4fd64769b77ce738159f0a606faf6076a2b0f0fc",
+      "oracle_node": "oracle_tests/test_heldout.py::test_ordered_heldout",
+      "oracle_sha256": "4d48772f3d9f091046a62aef88c682e85abb7ba20872cc4487e5474205dd299c",
+      "prompt_sha256": "cca4032d9a3415d4c46f39e2efb9c8850b2b9aa88152752a81704375290c68d1",
+      "public_node": "public_tests/test_visible.py::test_ordered_visible",
+      "repo_family_id": "family-0c83e070629a7407",
+      "split": "train",
+      "tokens": 4367
+    },
+    "termcolor": {
+      "input_files": {
+        "licenses/COPYING.txt": "e79b6bd82962c1330caaa7c42278567b08667777673f8e2371a624d5715d4c0e",
+        "prompt.txt": "c012cdbe09da416465ad39f88ce4686272ed596f8de0e0f8936b13846b49322f",
+        "public_tests/test_visible.py": "ff328a5cc43fbb36ce29d7b6d79252784a7d1bb1fa64a019f21f221e310b8882",
+        "src/termcolor/__init__.py": "a472a82bb17940a645c3ff45d6d156c2f13a1f84808839e484a9b69533097aae",
+        "src/termcolor/termcolor.py": "f67c4e5f736e7eb80e99725933953b9b17b39ea34d65eb70061afc64444e8e86",
+        "task.json": "6605e27607ec68c590dbbd1fec2e39a221bb378184d37ead8a9fc74dd5083a7c"
+      },
+      "inputs_sha256": "94e38965527b26b3070c53f83bf4fbc4f1fbc95d76412fa1ce9b4b0f696f164f",
+      "oracle_node": "oracle_tests/test_heldout.py::test_termcolor_heldout",
+      "oracle_sha256": "d31e72dd36271fa124256a239af7f87cc722c6aad468d9037fb11e20f9cf9749",
+      "prompt_sha256": "c012cdbe09da416465ad39f88ce4686272ed596f8de0e0f8936b13846b49322f",
+      "public_node": "public_tests/test_visible.py::test_termcolor_visible",
+      "repo_family_id": "family-82a9e720fc5c9314",
+      "split": "train",
+      "tokens": 2043
+    },
+    "time": {
+      "input_files": {
+        "licenses/LICENSE.rst": "82202c53d7c297d0199f35d98aa85439d322a7b68347cc2a31f4f4edfdf473e3",
+        "prompt.txt": "db2cf86469737b8d9ee4d18cef356568f1ac1f8f2bfb9f5d770e3cd23b35b138",
+        "public_tests/test_visible.py": "720d18f013fc742863579aa28a732eda551e96b46c6874cfc79d73ccc8058a67",
+        "pytimeparse/VERSION": "aeccfaffeec636e89d972edfb0faf337cd0ac748c67ef0ad538d10eb97896120",
+        "pytimeparse/__init__.py": "ade2d9fd4ba6b562aeb08426ea780f30d35264c99689fbb74531ef6807319666",
+        "pytimeparse/timeparse.py": "8f0061ac8cc1a05cf2d2d76094e932fe6dfd6c793347366061fdb37768c5c39f",
+        "task.json": "b8d23b83b8c3cf9b5ad840c44f67febaa3fd0f632a4631eb28cb03bd7cd52f59"
+      },
+      "inputs_sha256": "28e80e5884250175bdefa0f4344a7765afc8f9d306e27f57bf9837cbc5161059",
+      "oracle_node": "oracle_tests/test_heldout.py::test_time_heldout",
+      "oracle_sha256": "6af715e3e094480e20e5e9da836b1af4d35471c32bf628708acc90cbabd89149",
+      "prompt_sha256": "db2cf86469737b8d9ee4d18cef356568f1ac1f8f2bfb9f5d770e3cd23b35b138",
+      "public_node": "public_tests/test_visible.py::test_time_visible",
+      "repo_family_id": "family-c871410be64f648f",
+      "split": "train",
+      "tokens": 2488
+    }
+  },
+  "references": {
+    "ref-001": {
+      "actor_sha256": "9b2ce01187f666b390639c64e34c17879173806cf12a9d1a63d00ccbee6051b0",
+      "family": "family-ddd875612557a1b1",
+      "grader_sha256": "835481179fd8623d6e55aca5c27f4893897b2ec94a9c2b29239f8586efbd8fbd",
+      "source": "python-humanize/humanize#239",
+      "ticket_sha256": "1d0203e75128c33e7d3e9fffbf3f7fcab7eec4689dc5823fc94ef50ab77e348b"
+    },
+    "ref-002": {
+      "actor_sha256": "f77e35ff12f2a449b0a9e9a7efabb5a4675ed0ac5ccea8248ba49a4df5c8b4b1",
+      "family": "family-b4c497b02fa95c4b",
+      "grader_sha256": "caae897e4522da2fbdf7c13b732eddb3d8256fa8c36b5af8abed1486190157c9",
+      "source": "jpvanhal/inflection#6",
+      "ticket_sha256": "4034316e86e19cc3b75b5f17598fd07cdeee9c2546cbe6754bee156f0c932435"
+    }
+  },
+  "release_sha256": {
+    "fi-python-seeds-v1": "5628a557ace7f9574772fd45c16264da695bc4202429fb0a9743458515aa5437",
+    "human-regressions-v1": "9f7753afcccc2a19ceb216669f80c7182e7ad150a6e1a3d936d9e04241d78304"
+  }
+}

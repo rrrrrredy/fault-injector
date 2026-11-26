@@ -1,5 +1,13 @@
 # Fault-Injector
 
+## 阶段 1 数据集重放
+
+在冻结提交上运行 `python stage1/build.py`。需要 CPython 3.12、Git 和带 npm 的 Node.js。命令从指定 Git 对象重建切片，使用固定版本的 Qwen3-14B 分词器，分别运行公开与隐藏测试，并用阶段 0 的 Factory 与 RunCase 验收两道真实回归。输出位于本次独立的 `evidence/stage1-*/` 目录。也可以用 `--output <空目录>` 指定位置。
+
+训练、未见种子和历史回归按仓库家族两两隔离。输入清单见 [manifest.json](stage1/manifest.json)，复算目标见 [fingerprints.json](stage1/fingerprints.json)。完整审计记录在 `audit.json`，两套可分发包在 `release/`。只向训练端提供 train 的 actor 数据；评测时只向参与者提供单题 actor 目录。评分端持有 grader 归档与出处，三份同源 Case 计一个真实回归。数据集卡片分别说明署名、原始许可与适用范围。
+
+## 阶段 0 的历史参照题
+
 这个仓库的阶段 0 重放一个真实 Python 回归。humanize 4.11.0 把 `naturalsize(1.123456789)` 显示为 `1 Bytes`，4.12.0 保留了小数。这里使用上游 4.12.0 的提交和其直接后继修复，调用 Workflow Environment Factory 物化 Case，再交给 RunCase CLI 做语义校验。[原工单](https://github.com/python-humanize/humanize/issues/239) · [合入的修复 PR](https://github.com/python-humanize/humanize/pull/240)
 
 ## 重放

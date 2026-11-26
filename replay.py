@@ -34,7 +34,7 @@ def checkout_regression(path, url, revision):
     )
 
 
-def replay(work, evidence):
+def prepare_tools(work, extra_requirements=()):
     lock = json.loads((ROOT / "stage0.lock.json").read_text(encoding="utf-8"))
     protocol = fetch_tool(work, "runcase-interchange", lock["upstreams"]["runcase-interchange"])
     factory = fetch_tool(work, "workflow-environment-factory", lock["upstreams"]["workflow-environment-factory"])
@@ -43,21 +43,13 @@ def replay(work, evidence):
             if hashlib.sha256((directory / name).read_bytes()).hexdigest() != expected:
                 raise ValueError(f"Schema SHA-256 mismatch: {directory / name}")
 
-    source = lock["source"]
-    checkout_regression(work / "humanize", source["repository"], source["fix"])
-    parent = subprocess.check_output(
-        ["git", "-C", str(work / "humanize"), "rev-parse", "HEAD^"], text=True
-    ).strip()
-    if parent != source["fault"]:
-        raise ValueError(f"Expected the pinned faulty parent, got {parent}")
-
     env_dir = work / "venv"
     subprocess.run([sys.executable, "-m", "venv", str(env_dir)], check=True)
     windows = os.name == "nt"
     python = env_dir / ("Scripts/python.exe" if windows else "bin/python")
     subprocess.run(
         [str(python), "-m", "pip", "install", "--disable-pip-version-check", "--quiet",
-         "--constraint", str(factory / "requirements.lock"), "jsonschema", "pydantic", "pytest"],
+         "--constraint", str(factory / "requirements.lock"), "jsonschema", "pydantic", "pytest", *extra_requirements],
         check=True,
     )
     npm = shutil.which("npm.cmd" if windows else "npm")
@@ -83,6 +75,18 @@ def replay(work, evidence):
         "PYTHONIOENCODING": "utf-8",
         "PYTHONUTF8": "1",
     })
+    return python, cli, environment
+
+
+def replay(work, evidence):
+    source = json.loads((ROOT / "stage0.lock.json").read_text(encoding="utf-8"))["source"]
+    checkout_regression(work / "humanize", source["repository"], source["fix"])
+    parent = subprocess.check_output(
+        ["git", "-C", str(work / "humanize"), "rev-parse", "HEAD^"], text=True
+    ).strip()
+    if parent != source["fault"]:
+        raise ValueError(f"Expected the pinned faulty parent, got {parent}")
+    python, cli, environment = prepare_tools(work)
     subprocess.run(
         [str(python), str(ROOT / "materialize.py"), str(work), str(evidence), str(cli)],
         env=environment, check=True,

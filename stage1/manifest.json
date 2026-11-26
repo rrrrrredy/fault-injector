@@ -1,0 +1,202 @@
+{
+  "tokenizer": {
+    "repository": "Qwen/Qwen3-14B",
+    "commit_sha": "40c069824f4251a91eefaf281ebe4c544efd3e18",
+    "files": {
+      "tokenizer.json": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+      "tokenizer_config.json": "d5d09f07b48c3086c508b30d1c9114bd1189145b74e982a265350c923acd8101"
+    }
+  },
+  "repositories": [
+    {
+      "repository": "https://github.com/termcolor/termcolor.git",
+      "commit_sha": "a42d3cc19a3afbb2d4d88986e5367bd6b614bc36",
+      "split": "train",
+      "core": "src/termcolor",
+      "metadata": "pyproject.toml",
+      "spdx": "MIT",
+      "notice": "COPYING.txt",
+      "slice_id": "termcolor",
+      "import_root": "src",
+      "module": "src/termcolor/termcolor.py",
+      "files": [
+        "src/termcolor/__init__.py",
+        "src/termcolor/termcolor.py"
+      ],
+      "public_node": "public_tests/test_visible.py::test_termcolor_visible",
+      "oracle_node": "oracle_tests/test_heldout.py::test_termcolor_heldout",
+      "task": "Render terminal labels and respect explicit color options."
+    },
+    {
+      "repository": "https://github.com/rspeer/ordered-set.git",
+      "commit_sha": "9dfc91c27c0c56df2536036bec4a5b3f717ef2ba",
+      "split": "train",
+      "core": "ordered_set",
+      "metadata": "pyproject.toml",
+      "spdx": "MIT",
+      "notice": "MIT-LICENSE",
+      "slice_id": "ordered",
+      "import_root": ".",
+      "module": "ordered_set/__init__.py",
+      "files": [
+        "ordered_set/__init__.py"
+      ],
+      "public_node": "public_tests/test_visible.py::test_ordered_visible",
+      "oracle_node": "oracle_tests/test_heldout.py::test_ordered_heldout",
+      "task": "Preserve insertion order and element positions in ordered set operations."
+    },
+    {
+      "repository": "https://github.com/wroberts/pytimeparse.git",
+      "commit_sha": "549b3ace169a9d5434e9efc34565e02bd79b042f",
+      "split": "train",
+      "core": "pytimeparse",
+      "metadata": "setup.py",
+      "spdx": "MIT",
+      "notice": "LICENSE.rst",
+      "slice_id": "time",
+      "import_root": ".",
+      "module": "pytimeparse/timeparse.py",
+      "files": [
+        "pytimeparse/__init__.py",
+        "pytimeparse/timeparse.py",
+        "pytimeparse/VERSION"
+      ],
+      "public_node": "public_tests/test_visible.py::test_time_visible",
+      "oracle_node": "oracle_tests/test_heldout.py::test_time_heldout",
+      "task": "Parse a human-readable duration into seconds."
+    },
+    {
+      "repository": "https://github.com/pallets-eco/blinker.git",
+      "commit_sha": "c3364059663df1ddce32799d6b1922af89a345f6",
+      "split": "train",
+      "core": "src/blinker",
+      "metadata": "pyproject.toml",
+      "spdx": "MIT",
+      "notice": "LICENSE.txt",
+      "slice_id": "blinker",
+      "import_root": "src",
+      "module": "src/blinker/base.py",
+      "files": [
+        "src/blinker/__init__.py",
+        "src/blinker/_utilities.py",
+        "src/blinker/base.py"
+      ],
+      "public_node": "public_tests/test_visible.py::test_blinker_visible",
+      "oracle_node": "oracle_tests/test_heldout.py::test_blinker_heldout",
+      "task": "Deliver signals only to the receivers subscribed to the active sender."
+    },
+    {
+      "repository": "https://github.com/mewwts/addict.git",
+      "commit_sha": "75284f9593dfb929cadd900aff9e35e7c7aec54b",
+      "split": "eval_unseen",
+      "core": "addict",
+      "metadata": "setup.py",
+      "spdx": "MIT",
+      "notice": "LICENSE",
+      "slice_id": "addict",
+      "import_root": ".",
+      "module": "addict/addict.py",
+      "files": [
+        "addict/__init__.py",
+        "addict/addict.py"
+      ],
+      "public_node": "public_tests/test_visible.py::test_addict_visible",
+      "oracle_node": "oracle_tests/test_heldout.py::test_addict_heldout",
+      "task": "Read and update a nested mapping using its attribute interface."
+    },
+    {
+      "repository": "https://github.com/docopt/docopt.git",
+      "commit_sha": "8fea867d4220f1095dae9d6264ec5aa4031fb712",
+      "split": "eval_unseen",
+      "core": "docopt.py",
+      "metadata": "setup.py",
+      "spdx": "MIT",
+      "notice": "LICENSE-MIT",
+      "slice_id": "docopt",
+      "import_root": ".",
+      "module": "docopt.py",
+      "files": [
+        "docopt.py"
+      ],
+      "public_node": "public_tests/test_visible.py::test_docopt_visible",
+      "oracle_node": "oracle_tests/test_heldout.py::test_docopt_heldout",
+      "task": "Interpret arguments according to the supplied command usage."
+    },
+    {
+      "repository": "https://github.com/python-humanize/humanize.git",
+      "commit_sha": "11e62eeedb8990298c3612af82376dc2344d24f8",
+      "split": "human_regressions",
+      "core": "src/humanize",
+      "metadata": "pyproject.toml",
+      "spdx": "MIT",
+      "notice": "LICENCE",
+      "reference": {
+        "blind_id": "ref-001",
+        "source_from_stage0": true,
+        "merged_sha": "c11c08add7cfe22de4f27cd275c89a789c970dae",
+        "ticket": {
+          "symptom": "A file-size label shows 1.123456789 Bytes for a small fractional size.",
+          "expected": "The label should read 1 Bytes.",
+          "reproduce": "Use the default human-readable file-size display with a size of 1.123456789 bytes."
+        }
+      }
+    },
+    {
+      "repository": "https://github.com/jpvanhal/inflection.git",
+      "commit_sha": "d85ee5df61e2d58d42798a07ec93d1f1f7fd14ad",
+      "split": "human_regressions",
+      "core": "inflection.py",
+      "metadata": "setup.py",
+      "spdx": "MIT",
+      "notice": "LICENSE",
+      "reference": {
+        "blind_id": "ref-002",
+        "merged_sha": "47de1d0b5b93f8959756be9d65efea00d0a0f745",
+        "ticket": {
+          "symptom": "When displaying an English count, the plural of human appears as humen.",
+          "expected": "The label should use humans.",
+          "reproduce": "Pass the lowercase word human to the English pluralization function."
+        },
+        "source": {
+          "id": "jpvanhal/inflection#6",
+          "replay": {
+            "title": "English plural of human is displayed incorrectly",
+            "goal": "Display the plural of human correctly with the person control set to {value}.",
+            "completion": "The plural of human is humans.",
+            "failure": "assert 'humen' == 'humans'",
+            "control": "person control: {value}"
+          },
+          "repository": "https://github.com/jpvanhal/inflection.git",
+          "license": "MIT",
+          "issue": "https://github.com/jpvanhal/inflection/pull/6",
+          "fix_pr": "https://github.com/jpvanhal/inflection/pull/6",
+          "fault": "1c64f63da2e4819ba95580948f4bcc0bc318409c",
+          "fix": "d85ee5df61e2d58d42798a07ec93d1f1f7fd14ad",
+          "nodeid": "fixtures/test_inflection_6.py::test_human_plural",
+          "variable": {
+            "name": "person_plural",
+            "original": "people",
+            "variants": [
+              "persons",
+              "personages"
+            ],
+            "paths": [
+              "inflection.py"
+            ],
+            "confirmed_by_user": true,
+            "description": "Independent control for the plural of person. The target plural of human remains the same in all cases."
+          }
+        }
+      }
+    },
+    {
+      "repository": "https://github.com/idanmiara/ordered-set.git",
+      "commit_sha": "22c5b19d137c18d834886e1d40f8de82949907d7",
+      "split": "fork_control",
+      "core": "ordered_set",
+      "metadata": "pyproject.toml",
+      "spdx": "MIT",
+      "notice": "MIT-LICENSE"
+    }
+  ]
+}
