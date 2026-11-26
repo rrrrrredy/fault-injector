@@ -1,6 +1,7 @@
 """Fetch the pinned inputs, build the verifier tools, and replay in a fresh directory."""
 
 import hashlib
+from io import BytesIO
 import json
 import os
 from pathlib import Path
@@ -8,14 +9,23 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from urllib.request import urlopen
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parent
 
 
-def checkout(path, url, revision, *, depth=1):
+def fetch_tool(work, name, revision):
+    url = f"https://codeload.github.com/rrrrrredy/{name}/zip/{revision}"
+    with urlopen(url, timeout=90) as response, ZipFile(BytesIO(response.read())) as archive:
+        archive.extractall(work)
+    return work / f"{name}-{revision}"
+
+
+def checkout_regression(path, url, revision):
     subprocess.run(["git", "init", "--quiet", str(path)], check=True)
     subprocess.run(
-        ["git", "-C", str(path), "fetch", "--quiet", "--no-tags", f"--depth={depth}", url, revision],
+        ["git", "-C", str(path), "fetch", "--quiet", "--no-tags", "--depth=2", url, revision],
         check=True,
     )
     subprocess.run(
@@ -26,17 +36,15 @@ def checkout(path, url, revision, *, depth=1):
 
 def replay(work, evidence):
     lock = json.loads((ROOT / "stage0.lock.json").read_text(encoding="utf-8"))
-    protocol = work / "runcase-interchange"
-    factory = work / "workflow-environment-factory"
-    for repo in (protocol, factory):
-        checkout(repo, f"https://github.com/rrrrrredy/{repo.name}.git", lock["upstreams"][repo.name])
+    protocol = fetch_tool(work, "runcase-interchange", lock["upstreams"]["runcase-interchange"])
+    factory = fetch_tool(work, "workflow-environment-factory", lock["upstreams"]["workflow-environment-factory"])
     for name, expected in lock["schema_sha256"].items():
         for directory in (protocol / "schemas", ROOT / "schemas"):
             if hashlib.sha256((directory / name).read_bytes()).hexdigest() != expected:
                 raise ValueError(f"Schema SHA-256 mismatch: {directory / name}")
 
     source = lock["source"]
-    checkout(work / "humanize", source["repository"], source["fix"], depth=2)
+    checkout_regression(work / "humanize", source["repository"], source["fix"])
     parent = subprocess.check_output(
         ["git", "-C", str(work / "humanize"), "rev-parse", "HEAD^"], text=True
     ).strip()
