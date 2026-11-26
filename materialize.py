@@ -121,6 +121,7 @@ def materialize(work, evidence, cli):
         ["git", "-C", str(work / "humanize"), "rev-parse", source["fault"] + "^{tree}"], text=True,
     ).strip()
     receipt = {
+        "project_commit": subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip(),
         "source": source, "upstreams": lock["upstreams"], "host": platform.system(),
         "python": platform.python_version(), "execution_engine": engine.name,
         "declared_blueprint_image": lock["blueprint_image"], "baseline_git_tree": base_tree,
