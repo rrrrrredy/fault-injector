@@ -66,7 +66,6 @@ def replay(work, evidence):
 
     environment = os.environ.copy()
     environment.update({
-        "PATH": str(python.parent) + os.pathsep + environment["PATH"],
         "PYTHONPATH": os.pathsep.join([str(factory / "backend"), str(ROOT / "fixtures")]),
         "PYTHONNOUSERSITE": "1",
         "PYTHONDONTWRITEBYTECODE": "1",

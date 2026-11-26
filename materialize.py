@@ -24,7 +24,10 @@ class EvidenceEngine(LocalTestEngine):
         self.invocations = {}
 
     def run(self, workspace, image, argv, timeout_ms):
-        result = super().run(workspace, image, argv, timeout_ms)
+        # Windows can find the launcher's Python ahead of PATH. Keep the exported command portable.
+        if argv[0] != "python":
+            raise ValueError("The stage 0 fixture requires the replay's Python interpreter")
+        result = super().run(workspace, image, [sys.executable, *argv[1:]], timeout_ms)
         self.invocations[workspace.name] = asdict(result)
         return result
 
