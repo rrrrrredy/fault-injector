@@ -1,5 +1,46 @@
 # Fault-Injector
 
+## 阶段 2 的 CPU 接口
+
+在仓库根目录可直接导入以下模块。训练数据锁定到 Hugging Face 提交 `29b9338d1742ec1013bbc72e533eba3c0be8c274` 的 `train/actor.zip` 和 `train/grader.zip`。两份归档逐字节校验后，沙盒只接受 `blinker`、`ordered`、`termcolor`、`time` 四个种子 ID。评分端保管 grader 和完整验收回执，模型输入使用 actor。
+
+```python
+from stage2.sandbox import Pool
+from stage2.rewards import evaluate, export_case, extract_diff, reward
+from stage2.state_store import open_state, record_step, snapshot, restore, cursor_state
+
+with Pool(train_dir, runtime=wasi_dir) as pool:
+    observation = evaluate(pool, seed_id, completion)
+    # observation["reward"] is the scalar. Raw diffs can also be passed to pool.verify().
+with open_state(db_path) as con:
+    record_step(con, run_id, step, [
+        {"seed": seed_id, "completion": completion, "result": observation}
+    ], metadata={"next_seed": next_seed_id})
+    archive = snapshot(con, archive_path)
+db, checkpoint = restore(archive, new_empty_directory)
+```
+
+`Pool(train, *, runtime, workers=WORKERS, timeout=12, drive_paths=(), exempt_drive_paths=())` 支持并发调用 `verify(seed_id, diff, *, timeout=None)`。默认并发数为 `min(4, max(1, (os.cpu_count() or 2) // 2))`。宿主 Git 只操作冻结切片中的现有 Python 源文件。候选代码在无网络的 WASI CPython 内执行，源文件、测试及解释器目录只读。`drive_paths` 用来补充自定义挂载点。可读的 Drive 挂载会阻止启动。只有显式列入 `exempt_drive_paths` 的路径可豁免宿主侧检查，来宾的只读目录范围始终固定。退出上下文会等候在途验证结束并清理工作树。
+
+`extract_diff(completion)` 提取补丁。`evaluate(pool, seed_id, completion, *, timeout=None)` 运行验证，`reward(observation)` 是可单独调用的纯函数。冻结断言在故障态失败、反向补丁还原全绿且指纹一致得 `+1`，补丁应用后原测试仍全绿得 `0`，无效补丁、超时或其他验证失败得 `-1`。结果包含 `reason`、`files_changed`、`syntax_ok`、`import_ok`、`failed_nodes`、两态退出码和重置指纹。
+
+`export_case(train, seed_id, completion, *, runtime, tools, out)` 独立复验正例，生成三个同源 Case，并返回带有两次重置指纹和 RunCase 语义校验结果的回执。`out` 须为空，输出包含 `cases/`、`candidate.diff`、`fixture.bundle` 和 `receipt.json`。三个解释器哈希种子为 `1729`、`2027`、`4093`。`source_count` 按候选补丁来源计数。
+
+`record_step(con, run, step, rollouts, *, metadata=None)` 在同一事务中提交一个 step 的全部评估记录和断点元数据。`cursor_state(con)` 返回各 run 的末次 step、元数据及总记录数。`snapshot(con, archive)` 用 SQLite 在线备份生成 ZIP 和同名 `.sha256`。`restore(archive, new_directory)` 校验归档、数据库摘要和 SQLite 完整性，返回 `(数据库路径, 断点摘要)`。活跃数据库始终放在本地磁盘。
+
+### 从干净环境复算
+
+使用 CPython 3.12、Git 和带 npm 的 Node.js，在已激活的空 Python 虚拟环境中执行。前四条命令准备受信依赖和冻结输入。最后一条在本地离线运行，生成 `cpu-receipt.json`。已有上述两份 HF 归档时，`--train` 可直接指向存放它们的目录，跳过 `prepare-train`。Ubuntu CI 在独立网络命名空间中执行相同验收。
+
+```shell
+python -m pip install -r stage2/requirements-cpu.txt
+python -m stage2.sandbox prepare --runtime evidence/setup/wasi
+python -m stage2.check prepare-train --train evidence/setup/train
+python -m stage2.rewards prepare-export --tools evidence/setup/export
+python -m stage2.check verify --train evidence/setup/train --runtime evidence/setup/wasi --tools evidence/setup/export --out evidence/stage2-check
+```
+
+
 ## 阶段 1 数据集重放
 
 在冻结提交上运行 `python stage1/build.py`。需要 CPython 3.12、Git 和带 npm 的 Node.js。命令从指定 Git 对象重建切片，使用固定版本的 Qwen3-14B 分词器，分别运行公开与隐藏测试，并用阶段 0 的 Factory 与 RunCase 验收两道真实回归。输出位于本次独立的 `evidence/stage1-*/` 目录。也可以用 `--output <空目录>` 指定位置。

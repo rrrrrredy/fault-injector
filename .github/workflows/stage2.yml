@@ -1,0 +1,52 @@
+name: Stage 2 CPU foundation
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stage2/**'
+      - 'stage1/**'
+      - 'schemas/**'
+      - 'materialize.py'
+      - 'replay.py'
+      - 'stage0.lock.json'
+      - '.github/workflows/stage2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cpu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12.14'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.3'
+          package-manager-cache: false
+      - name: Prepare frozen CPU tools and four training slices
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install --disable-pip-version-check -r stage2/requirements-cpu.txt
+          python -m stage2.sandbox prepare --runtime "$RUNNER_TEMP/fi-wasi"
+          python -m stage2.check prepare-train --train "$RUNNER_TEMP/fi-train"
+          python -m stage2.rewards prepare-export --tools "$RUNNER_TEMP/fi-export"
+      - name: Verify offline as the runner user with a private network namespace
+        run: |
+          python -m compileall -q stage2
+          sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+            env -i "HOME=$HOME" "PATH=$PATH" LANG=C.UTF-8 \
+            "$(command -v python)" -m stage2.check verify --train "$RUNNER_TEMP/fi-train" \
+            --runtime "$RUNNER_TEMP/fi-wasi" --tools "$RUNNER_TEMP/fi-export" --out evidence/stage2-ubuntu
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: stage2-ubuntu-cpu
+          path: |
+            evidence/stage2-ubuntu/cpu-receipt.json
+            evidence/stage2-ubuntu/export/receipt.json
+          if-no-files-found: error
