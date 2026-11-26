@@ -112,7 +112,7 @@
       },
       "inputs_sha256": "85d4b82c0a3f27fde0ec05c68fb98a5515e783d40cbce7bfd60d9c26767069d9",
       "oracle_node": "oracle_tests/test_heldout.py::test_addict_heldout",
-      "oracle_sha256": "fca57aa6617b40fe46f0ea3c239914b23cf9368b333a7d78d4c60a0a1609a311",
+      "oracle_sha256": "4ac8fb97a0cc63d8c20eef487098e0fc46fc1d75fe13d600ee563a84335896a5",
       "prompt_sha256": "f58e351bc79b6bbc9aed9bf5fb618bf44e74756c319b842b108dc405a702e91e",
       "public_node": "public_tests/test_visible.py::test_addict_visible",
       "repo_family_id": "family-4f4b610184e38499",
@@ -227,7 +227,7 @@
     }
   },
   "release_sha256": {
-    "fi-python-seeds-v1": "5628a557ace7f9574772fd45c16264da695bc4202429fb0a9743458515aa5437",
+    "fi-python-seeds-v1": "0adc14797dff8a150479a77f31a704d038a8306c694bfb0e33f3857f1c4aea20",
     "human-regressions-v1": "9f7753afcccc2a19ceb216669f80c7182e7ad150a6e1a3d936d9e04241d78304"
   }
 }

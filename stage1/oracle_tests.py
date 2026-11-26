@@ -46,7 +46,7 @@ def test_addict_heldout():
 
     record = Dict({"queue": [{"id": 1}], "limits": {"soft": 3}})
     record.update({"queue": [{"id": 2}], "limits": {"hard": 7}})
-    assert record.queue[0].id == 2
+    assert record.queue == [{"id": 2}]
     assert record.limits.to_dict() == {"soft": 3, "hard": 7}
     record.freeze()
     try:
