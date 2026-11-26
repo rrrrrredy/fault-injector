@@ -1,0 +1,37 @@
+{
+  "upstreams": {
+    "runcase-interchange": "70ea4f9203e95282198bc9d9f90386b5a50d3c52",
+    "workflow-environment-factory": "ad7ef07a23c982cacfc735488820f4d2022b93b5",
+    "beforedone": "f8cb5b42e371da250d0e3784c916e5d15f65f0c9",
+    "execution-fidelity-guard": "34db49154a94cbe7f025048131b2e125c1090775"
+  },
+  "schema_sha256": {
+    "agent.run.v1.schema.json": "91beb4fd801e86aca4cf934cd6772bc155decf127f0cbbfb1d92b288ac18545e",
+    "workflow.case.v1.schema.json": "475ba693caba4dd50b86f53d4ca9c54b6176dc5955ea245a04d7bf42f28ed808",
+    "workflow.score.v1.schema.json": "a8fb3c43870c4c0e8a8358208bdc5d28d8fab35ebf72400a3109625127da7a36"
+  },
+  "source": {
+    "id": "python-humanize/humanize#239",
+    "repository": "https://github.com/python-humanize/humanize.git",
+    "license": "MIT",
+    "issue": "https://github.com/python-humanize/humanize/issues/239",
+    "fix_pr": "https://github.com/python-humanize/humanize/pull/240",
+    "fault": "a0602c70bb6e11322107b51114333bab7adab021",
+    "fix": "11e62eeedb8990298c3612af82376dc2344d24f8",
+    "nodeid": "fixtures/test_humanize_239.py::test_fractional_bytes",
+    "variable": {
+      "name": "default_precision",
+      "original": "%.1f",
+      "variants": [
+        "%.0f",
+        "%.3f"
+      ],
+      "paths": [
+        "src/humanize/filesize.py"
+      ],
+      "confirmed_by_user": true,
+      "description": "Default decimal precision for scaled sizes. Fractional counts below one kilobyte must still render as integer bytes."
+    }
+  },
+  "blueprint_image": "python@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b"
+}
