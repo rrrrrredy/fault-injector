@@ -1,5 +1,13 @@
 # Fault-Injector
 
+## Colab A100 冒烟与标定
+
+在 Colab 打开本次冻结提交下的 [四个 Cell](notebooks/colab_launcher.ipynb)，选择 A100 和运行时 `2026.10`。在 Colab Secrets 放入名为 `HF_TOKEN` 的只读令牌，授权读取私有种子集。第一格接收完整的 40 位项目提交，或读取已设置的 `FI_COMMIT`，然后校验实际检出的 SHA。依赖装在继承原生 CUDA Torch 的独立虚拟环境中，训练输入只读取冻结的 actor 数据。两份训练归档的 SHA-256 在受信准备阶段核对。
+
+第二格运行 4B 的 30 个优化器步，首个有效候选经 Factory 和 RunCase 独立复核。若没有有效候选，回执记录 `no_verified_candidate`。第三格在独立进程中用最长公开样本做长度标定，保留完整源码，并用明确标记的填充将真实输入补到 11,264 tokens。单步四条输出各达到 5,120 tokens，才签发 16K 标定回执。整卡显存按 200 ms 间隔采样，同时记录 PyTorch 分配和保留峰值。第四格在两个进程退出后挂载 Drive，上传快照和内含 Case、回执的归档，随后从 Drive 读回到新建本地目录并验证断点。
+
+Windows 或 Ubuntu 从仓库根目录执行 `python -m stage2.colab_grpo --mode mock-preflight`。裸克隆用一个合成种子做真实 Git 工作树、奖励和 SQLite 快照恢复检查。设置 `FI_WORK_DIR` 后，同一命令读取其 `train/` 下两个冻结数据包及 `wasi/` 中准备好的解释器，并实际启动隔离探针。
+
 ## 阶段 2 的 CPU 接口
 
 在仓库根目录可直接导入以下模块。训练数据锁定到 Hugging Face 提交 `29b9338d1742ec1013bbc72e533eba3c0be8c274` 的 `train/actor.zip` 和 `train/grader.zip`。两份归档逐字节校验后，沙盒只接受 `blinker`、`ordered`、`termcolor`、`time` 四个种子 ID。评分端保管 grader 和完整验收回执，模型输入使用 actor。

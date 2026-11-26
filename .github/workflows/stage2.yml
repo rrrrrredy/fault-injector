@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'stage2/**'
+      - 'notebooks/colab_launcher.ipynb'
       - 'stage1/**'
       - 'schemas/**'
       - 'materialize.py'
@@ -32,21 +33,32 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python -m pip install --disable-pip-version-check -r stage2/requirements-cpu.txt
-          python -m stage2.sandbox prepare --runtime "$RUNNER_TEMP/fi-wasi"
-          python -m stage2.check prepare-train --train "$RUNNER_TEMP/fi-train"
-          python -m stage2.rewards prepare-export --tools "$RUNNER_TEMP/fi-export"
+          python -m pip install --disable-pip-version-check -r stage2/requirements-cpu.txt nbformat==5.10.4
+          python -m stage2.sandbox prepare --runtime "$RUNNER_TEMP/wasi"
+          python -m stage2.check prepare-train --train "$RUNNER_TEMP/train"
+          python -m stage2.rewards prepare-export --tools "$RUNNER_TEMP/export-tools"
       - name: Verify offline as the runner user with a private network namespace
         run: |
           python -m compileall -q stage2
           sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
             env -i "HOME=$HOME" "PATH=$PATH" LANG=C.UTF-8 \
-            "$(command -v python)" -m stage2.check verify --train "$RUNNER_TEMP/fi-train" \
-            --runtime "$RUNNER_TEMP/fi-wasi" --tools "$RUNNER_TEMP/fi-export" --out evidence/stage2-ubuntu
+            "$(command -v python)" -m stage2.check verify --train "$RUNNER_TEMP/train" \
+            --runtime "$RUNNER_TEMP/wasi" --tools "$RUNNER_TEMP/export-tools" --out evidence/stage2-ubuntu
+      - name: Run Colab mock and notebook contracts offline without GPU packages
+        run: |
+          sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+            env -i "HOME=$HOME" "PATH=$PATH" "FI_WORK_DIR=$RUNNER_TEMP" "FI_TRAIN_DIR=$RUNNER_TEMP/train" \
+            bash -euo pipefail -c '
+              env -u FI_WORK_DIR python -m stage2.colab_grpo --mode mock-preflight | tee evidence/stage2-ubuntu/colab-standalone.json
+              time -p python -m stage2.colab_grpo --mode mock-preflight | tee evidence/stage2-ubuntu/colab-preflight.json
+              python -m unittest -v stage2.test_colab
+            '
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: stage2-ubuntu-cpu
           path: |
             evidence/stage2-ubuntu/cpu-receipt.json
+            evidence/stage2-ubuntu/colab-preflight.json
+            evidence/stage2-ubuntu/colab-standalone.json
             evidence/stage2-ubuntu/export/receipt.json
           if-no-files-found: error
