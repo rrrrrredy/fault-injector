@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths:
       - 'stage2/**'
-      - 'notebooks/colab_launcher.ipynb'
+      - 'notebooks/fi_stage2_gpu_smoke.ipynb'
       - 'stage1/**'
       - 'schemas/**'
       - 'materialize.py'
@@ -44,7 +44,7 @@ jobs:
             env -i "HOME=$HOME" "PATH=$PATH" LANG=C.UTF-8 \
             "$(command -v python)" -m stage2.check verify --train "$RUNNER_TEMP/train" \
             --runtime "$RUNNER_TEMP/wasi" --tools "$RUNNER_TEMP/export-tools" --out evidence/stage2-ubuntu
-      - name: Run Colab mock and notebook contracts offline without GPU packages
+      - name: Verify the clean H100 and A100 launcher, memory budget and Colab mock offline
         run: |
           sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
             env -i "HOME=$HOME" "PATH=$PATH" "FI_WORK_DIR=$RUNNER_TEMP" "FI_TRAIN_DIR=$RUNNER_TEMP/train" \

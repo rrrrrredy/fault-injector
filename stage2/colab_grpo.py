@@ -1,12 +1,14 @@
 """Colab GRPO for four frozen functional slices. The mock CLI only needs Python and Git."""
 
 import argparse
-from contextlib import contextmanager, nullcontext
+from contextlib import nullcontext
 import hashlib
 from io import BytesIO
 import json
 import os
 from pathlib import Path
+import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -24,6 +26,7 @@ MODELS = {
 }
 SEEDS = ("blinker", "ordered", "termcolor", "time")
 MAX_LENGTH, COMPLETION, GROUP = 16384, 5120, 4
+GPU_BUDGET_MIB = 40960
 GPU_PACKAGES = ("torch", "unsloth", "vllm", "trl", "datasets", "transformers")
 ROOT = Path(__file__).resolve().parents[1]
 SYSTEM = (
@@ -170,69 +173,168 @@ def mock_preflight(work=None):
     }
 
 
-@contextmanager
-def gpu_samples(path):
-    """Sample device 0 throughout loading and training; fail if the external meter failed."""
-    with path.open("w", encoding="ascii") as log:
-        proc = subprocess.Popen(
-            [
-                "nvidia-smi",
-                "-i",
-                "0",
-                "--query-gpu=memory.used",
-                "--format=csv,noheader,nounits",
-                "--loop-ms=200",
-            ],
-            stdout=log,
+def gpu_inventory(output=None):
+    if output is None:
+        output = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"], text=True
         )
-        try:
-            yield
-            if proc.poll() is not None:
-                raise RuntimeError("nvidia-smi stopped during the measurement")
-        finally:
-            if proc.poll() is None:
-                proc.terminate()
-            proc.wait(timeout=10)
+    rows = output.strip().splitlines()
+    if len(rows) != 1:
+        raise RuntimeError("Select one H100 or A100 GPU in Colab")
+    name, _, memory = rows[0].rpartition(",")
+    if not re.search(r"\b[HA]100\b", name) or not memory.strip().isdecimal():
+        raise RuntimeError(f"Expected an H100 or A100 with reported device memory, got {rows[0]}")
+    total = int(memory)
+    # The 40 GB A100 can report 40537 MiB of usable memory. The software cap is independently 40960 MiB.
+    if total * 2**20 < 40_000_000_000:
+        raise RuntimeError(f"{name} has only {total} MiB, below the 40 GB hardware minimum")
+    return {"gpu_name": name.strip(), "gpu_total_mib": total}
+
+
+def check_native_torch(torch, device):
+    if not torch.version.cuda or not torch.cuda.is_available() or torch.cuda.device_count() != 1:
+        raise RuntimeError("Colab must expose a single GPU to its native CUDA PyTorch")
+    if not torch.cuda.is_bf16_supported(including_emulation=False):
+        raise RuntimeError("Native hardware bf16 support is required")
+    props = torch.cuda.get_device_properties(0)
+    visible = gpu_inventory(f"{props.name}, {props.total_memory // 2**20}")
+    if "MIG" in props.name.upper() or ("H100" in visible["gpu_name"]) != ("H100" in device["gpu_name"]):
+        raise RuntimeError(f"CUDA device {props.name} does not match the selected full GPU")
+
+
+def generation_options(vllm, calibration):
+    if not calibration:
+        return {}
+    return {"min_tokens": COMPLETION, "ignore_eos": True} if vllm else {"min_new_tokens": COMPLETION}
+
+
+def metered_worker(command, meter_command, report, draft, receipt):
+    """The supervisor owns the final receipt and can stop a worker inside a native CUDA call."""
+    receipt = dict(
+        receipt,
+        status="running",
+        whole_gpu_peak_mib=None,
+        within_40gb_budget=None,
+        device_samples=0,
+        device_sample_interval_ms=200,
+    )
+
+    def save():
+        report.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+
+    save()
+    child = None
+    try:
+        with subprocess.Popen(meter_command, stdout=subprocess.PIPE, text=True) as meter:
+            try:
+                for line in meter.stdout:
+                    value = line.strip()
+                    if not value.isdecimal():
+                        raise RuntimeError(f"Invalid whole-GPU memory sample: {value!r}")
+                    peak = max(receipt["whole_gpu_peak_mib"] or 0, int(value))
+                    receipt.update(whole_gpu_peak_mib=peak, within_40gb_budget=peak <= GPU_BUDGET_MIB)
+                    receipt["device_samples"] += 1
+                    if peak > GPU_BUDGET_MIB:
+                        receipt["status"] = "budget_exceeded"
+                        raise RuntimeError(
+                            f"Whole GPU used {peak} MiB, over the {GPU_BUDGET_MIB} MiB budget"
+                        )
+                    if child is None:
+                        child = subprocess.Popen(command, start_new_session=os.name == "posix")
+                    elif child.poll() is not None:
+                        break
+                else:
+                    raise RuntimeError("Whole-GPU memory meter stopped before the worker finished")
+                if child.returncode or not draft.is_file() or not peak:
+                    raise RuntimeError(
+                        f"GPU worker or memory measurement failed (worker exit {child.returncode})"
+                    )
+                receipt.update(json.loads(draft.read_bytes()), status="completed")
+            finally:
+                if child is not None and child.poll() is None:
+                    if os.name == "posix":
+                        try:
+                            os.killpg(child.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass  # The worker exited between poll and kill.
+                    else:
+                        child.kill()
+                    child.wait()
+                if meter.poll() is None:
+                    meter.terminate()
+    finally:
+        if receipt["status"] == "running":
+            receipt["status"] = "failed"
+        receipt["whole_gpu_sampled_peak_mib"] = receipt["whole_gpu_peak_mib"]
+        save()
+    return receipt
 
 
 def run_gpu(mode, work):
     if not sys.platform.startswith("linux") or not Path("/content").is_dir():
-        raise RuntimeError("GPU modes require the user's Colab A100 runtime")
-    devices = subprocess.check_output(
-        ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], text=True
-    ).splitlines()
-    if len(devices) != 1 or "A100" not in devices[0]:
-        raise RuntimeError("Select a single A100 in Colab")
+        raise RuntimeError("GPU modes require a user-started Colab H100 or A100 runtime")
+    device = gpu_inventory()
     preflight = mock_preflight(work)
     # A real healthy WASI assertion must pass before any GPU package is imported.
     with sandbox.Pool(work / "train", runtime=work / "wasi", workers=1) as pool:
         if pool.baseline("time")["status"] != "pass":
             raise RuntimeError("Frozen WASI baseline failed")
-    from unsloth import FastLanguageModel  # install patches before TRL / transformers
-    import torch
-    from datasets import Dataset
-    from huggingface_hub import snapshot_download
-    from transformers import TrainerCallback
-    from trl import GRPOConfig, GRPOTrainer
-
     work.mkdir(parents=True, exist_ok=True)
     run = Path(tempfile.mkdtemp(prefix=mode + "-", dir=work))
-    report = work / (mode + "_receipt.json")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     model_id, revision = MODELS[mode]
     receipt = {
         "mode": mode,
         "project_commit": commit,
         "run_dir": run.name,
-        "status": "running",
         "model": model_id,
         "revision": revision,
         "train_revision": sandbox.TRAIN_REVISION,
-        "device": torch.cuda.get_device_name(0),
-        "torch": torch.__version__,
+        "device": device["gpu_name"],
+        **device,
         "preflight": preflight,
     }
-    report.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    command = [
+        sys.executable,
+        "-c",
+        "import sys; from pathlib import Path; from stage2.colab_grpo import train_worker; "
+        "train_worker(sys.argv[1], Path(sys.argv[2]))",
+        mode,
+        str(run),
+    ]
+    meter = [
+        "nvidia-smi",
+        "-i",
+        "0",
+        "--query-gpu=memory.used",
+        "--format=csv,noheader,nounits",
+        "--loop-ms=200",
+    ]
+    return metered_worker(command, meter, work / (mode + "_receipt.json"), run / "worker.json", receipt)
+
+
+def train_worker(mode, run):
+    import torch
+
+    device = gpu_inventory()
+    check_native_torch(torch, device)
+    torch.cuda.set_per_process_memory_fraction(
+        min(1.0, GPU_BUDGET_MIB * 2**20 / torch.cuda.get_device_properties(0).total_memory), 0
+    )
+    from unsloth import FastLanguageModel  # install patches before TRL / transformers
+    from datasets import Dataset
+    from huggingface_hub import snapshot_download
+    from transformers import TrainerCallback
+    from trl import GRPOConfig, GRPOTrainer
+
+    work = run.parent
+    runtime = json.loads((work / "colab-runtime.json").read_bytes())
+    if runtime["torch"] != str(torch.__version__):
+        raise RuntimeError("GPU worker PyTorch differs from the native Colab installation")
+    use_vllm = runtime["generation_backend"] == "vllm"
+    engine_fraction = 0.58 * min(1.0, GPU_BUDGET_MIB / device["gpu_total_mib"])
+    receipt = dict(runtime)
+    model_id, revision = MODELS[mode]
     weights = snapshot_download(model_id, revision=revision, token=False)
     calibration = mode == "calibrate-14b"
     pending = []
@@ -241,7 +343,6 @@ def run_gpu(mode, work):
     longest_completion = 0
     steps_with_reward_spread = 0
     candidate = None
-    monitor = run / "device-mib.txt"
     with (
         open_state(run / "run.sqlite") as con,
         sandbox.Pool(work / "train", runtime=work / "wasi") as pool,
@@ -286,68 +387,69 @@ def run_gpu(mode, work):
                     snapshot(con, run / (mode + ".zip"))
 
         torch.cuda.reset_peak_memory_stats()
-        with gpu_samples(monitor):
-            model, tokenizer = FastLanguageModel.from_pretrained(
-                model_name=weights,
-                use_exact_model_name=True,
-                max_seq_length=MAX_LENGTH,
-                dtype=torch.bfloat16,
-                load_in_4bit=True,
-                fast_inference=True,
-                max_lora_rank=32,
-                gpu_memory_utilization=0.58,
-            )
-            model = FastLanguageModel.get_peft_model(
-                model,
-                r=32,
-                lora_alpha=32,
-                target_modules=[
-                    "q_proj",
-                    "k_proj",
-                    "v_proj",
-                    "o_proj",
-                    "gate_proj",
-                    "up_proj",
-                    "down_proj",
-                ],
-                use_gradient_checkpointing="unsloth",
-                random_state=3407,
-            )
-            rows = make_prompts(tokenizer, actor_rows(work / "train/actor.zip"), calibration=calibration)
-            cfg = GRPOConfig(
-                output_dir=str(run / "trainer"),
-                per_device_train_batch_size=1,
-                gradient_accumulation_steps=GROUP,
-                num_generations=GROUP,
-                max_steps=MODES[mode],
-                learning_rate=5e-6,
-                bf16=True,
-                use_vllm=True,
-                vllm_mode="colocate",
-                vllm_gpu_memory_utilization=0.58,
-                vllm_max_model_length=MAX_LENGTH,
-                max_completion_length=COMPLETION,
-                generation_kwargs={"min_tokens": COMPLETION, "ignore_eos": True} if calibration else {},
-                mask_truncated_completions=False,
-                report_to="none",
-                save_strategy="no",
-                logging_steps=1,
-            )
-            trainer = GRPOTrainer(
-                model=model,
-                processing_class=tokenizer,
-                reward_funcs=[verifier],
-                args=cfg,
-                train_dataset=Dataset.from_list(rows),
-                callbacks=[CompletedStep()],
-            )
-            if trainer.vllm_generation.llm is not model.vllm_engine:
-                raise RuntimeError("TRL did not reuse the Unsloth inference engine")
-            torch.cuda.synchronize()
-            started = time.monotonic()
-            trainer.train()
-            torch.cuda.synchronize()
-            train_seconds = time.monotonic() - started
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=weights,
+            use_exact_model_name=True,
+            max_seq_length=MAX_LENGTH,
+            dtype=torch.bfloat16,
+            load_in_4bit=True,
+            fast_inference=use_vllm,
+            max_lora_rank=32,
+            gpu_memory_utilization=engine_fraction,
+        )
+        model = FastLanguageModel.get_peft_model(
+            model,
+            r=32,
+            lora_alpha=32,
+            target_modules=[
+                "q_proj",
+                "k_proj",
+                "v_proj",
+                "o_proj",
+                "gate_proj",
+                "up_proj",
+                "down_proj",
+            ],
+            use_gradient_checkpointing="unsloth",
+            random_state=3407,
+        )
+        rows = make_prompts(tokenizer, actor_rows(work / "train/actor.zip"), calibration=calibration)
+        cfg = GRPOConfig(
+            output_dir=str(run / "trainer"),
+            per_device_train_batch_size=1,
+            gradient_accumulation_steps=GROUP,
+            num_generations=GROUP,
+            max_steps=MODES[mode],
+            learning_rate=5e-6,
+            bf16=True,
+            use_vllm=use_vllm,
+            vllm_mode="colocate",
+            vllm_gpu_memory_utilization=engine_fraction,
+            vllm_max_model_length=MAX_LENGTH,
+            max_completion_length=COMPLETION,
+            generation_kwargs=generation_options(use_vllm, calibration),
+            mask_truncated_completions=False,
+            report_to="none",
+            save_strategy="no",
+            logging_steps=1,
+        )
+        trainer = GRPOTrainer(
+            model=model,
+            processing_class=tokenizer,
+            reward_funcs=[verifier],
+            args=cfg,
+            train_dataset=Dataset.from_list(rows),
+            callbacks=[CompletedStep()],
+        )
+        if bool(trainer.use_vllm) != use_vllm:
+            raise RuntimeError("Trainer selected a different generation backend")
+        if use_vllm and trainer.vllm_generation.llm is not model.vllm_engine:
+            raise RuntimeError("TRL did not reuse the Unsloth inference engine")
+        torch.cuda.synchronize()
+        started = time.monotonic()
+        trainer.train()
+        torch.cuda.synchronize()
+        train_seconds = time.monotonic() - started
         cursor = cursor_state(con)
         if (
             pending
@@ -357,9 +459,6 @@ def run_gpu(mode, work):
         ):
             raise RuntimeError(f"Incomplete optimizer steps: {cursor}")
         snapshot(con, run / (mode + ".zip"))
-    samples = [int(line) for line in monitor.read_text(encoding="ascii").splitlines() if line.strip()]
-    if not samples or max(samples) <= 0:
-        raise RuntimeError("No valid whole-device memory samples")
     receipt.update(
         optimizer_steps=trainer.state.global_step,
         rollouts=cursor["rollouts"],
@@ -368,9 +467,6 @@ def run_gpu(mode, work):
         max_completion_tokens=COMPLETION,
         max_completion_tokens_observed=longest_completion,
         steps_with_reward_spread=steps_with_reward_spread,
-        whole_gpu_sampled_peak_mib=max(samples),
-        device_samples=len(samples),
-        device_sample_interval_ms=200,
         torch_max_allocated_mib=round(torch.cuda.max_memory_allocated() / 2**20, 1),
         torch_max_reserved_mib=round(torch.cuda.max_memory_reserved() / 2**20, 1),
         train_sec=round(train_seconds, 3),
@@ -389,9 +485,7 @@ def run_gpu(mode, work):
         if case["rci_exit"] != 0 or len(case["cases"]) != 3 or case["source_count"] != 1:
             raise RuntimeError("Invalid Factory/RunCase receipt")
         receipt.update(case_status="verified", rci_exit=0, source_count=1)
-    receipt["status"] = "completed"
-    report.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
-    return receipt
+    (run / "worker.json").write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
 
 
 def main():

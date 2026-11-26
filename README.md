@@ -1,10 +1,12 @@
 # Fault-Injector
 
-## Colab A100 冒烟与标定
+## Stage 2 GPU 冒烟与 16K 显存标定
 
-在 Colab 打开本次冻结提交下的 [四个 Cell](notebooks/colab_launcher.ipynb)，选择 A100 和运行时 `2026.10`。在 Colab Secrets 放入名为 `HF_TOKEN` 的只读令牌，授权读取私有种子集。第一格接收完整的 40 位项目提交，或读取已设置的 `FI_COMMIT`，然后校验实际检出的 SHA。依赖装在继承原生 CUDA Torch 的独立虚拟环境中，训练输入只读取冻结的 actor 数据。两份训练归档的 SHA-256 在受信准备阶段核对。
+打开 [Colab 启动页](https://colab.research.google.com/github/rrrrrredy/fault-injector/blob/stage2b-gpu-v2/notebooks/fi_stage2_gpu_smoke.ipynb)，使用默认最新运行时（Latest），首选单张 H100，也支持 A100 40GB 或 80GB。选择“全部运行”即可。第一格从仓库发布标签自动解析完整提交，核对检出的 SHA 和执行文件树摘要。公开上游的四个训练切片可重建出与私有 HF 发布逐字节相同的 actor 和 grader 归档，两个 SHA-256 都通过才继续，模型只接收 actor。
 
-第二格运行 4B 的 30 个优化器步，首个有效候选经 Factory 和 RunCase 独立复核。若没有有效候选，回执记录 `no_verified_candidate`。第三格在独立进程中用最长公开样本做长度标定，保留完整源码，并用明确标记的填充将真实输入补到 11,264 tokens。单步四条输出各达到 5,120 tokens，才签发 16K 标定回执。整卡显存按 200 ms 间隔采样，同时记录 PyTorch 分配和保留峰值。第四格在两个进程退出后挂载 Drive，上传快照和内含 Case、回执的归档，随后从 Drive 读回到新建本地目录并验证断点。
+准备步骤检查实际分配的型号、可用显存与原生 CUDA PyTorch 的硬件 bf16 能力，并在独立环境中保护镜像的 PyTorch 和 CUDA 组件。已适配的 vLLM 轮子与原生 ABI 匹配时复用模型权重，其他受支持的环境由 TRL 使用 Transformers 生成。每次 GPU 回执记录实际后端及 Torch、CUDA 版本。云端实际完成的作业给出该型号的实测结果。
+
+第二格运行 4B 的 30 个优化器步，首个有效候选经 Factory 和 RunCase 独立复核。若没有有效候选，回执记录 `no_verified_candidate`。第三格在独立进程中保留完整公开源码，将输入补到 11,264 tokens。单步四条输出各达到 5,120 tokens 才通过 16K 标定。两个作业都从加载模型前开始，每 200 ms 用 `nvidia-smi` 采样整卡显存。任一采样超过 **40,960 MiB** 即终止作业并记录超预算。回执含 `gpu_name`、`gpu_total_mib`、`whole_gpu_peak_mib`、`within_40gb_budget` 及 PyTorch 分配和保留峰值。第四格在两个作业均通过并退出后挂载 Drive，上传快照及回执归档，再从 Drive 读回至全新本地目录验证断点。首次挂载可能需要 Google 授权。
 
 Windows 或 Ubuntu 从仓库根目录执行 `python -m stage2.colab_grpo --mode mock-preflight`。裸克隆用一个合成种子做真实 Git 工作树、奖励和 SQLite 快照恢复检查。设置 `FI_WORK_DIR` 后，同一命令读取其 `train/` 下两个冻结数据包及 `wasi/` 中准备好的解释器，并实际启动隔离探针。
 

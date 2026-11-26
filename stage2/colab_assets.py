@@ -11,7 +11,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from .sandbox import TRAIN_HASHES, TRAIN_REVISION, guard_mounts
@@ -22,56 +22,83 @@ NODE = "node-v24.22.3-linux-x64"
 NODE_HASH = "4f2b175a6d53a5c617a80dba2676238a0688cef28c6da4eba35c7d844e66fcfb"
 
 
-def fetch_inputs(train, get_secret):
-    train.mkdir(parents=True, exist_ok=True)
-    token = get_secret()
-    if not isinstance(token, str) or not token.strip():
-        raise ValueError(
-            "Allow this notebook to read a Colab secret named HF_TOKEN for the private train dataset"
-        )
-    for name, expected in TRAIN_HASHES.items():
-        url = f"https://huggingface.co/datasets/RedinGhost/fi-python-seeds-v1/resolve/{TRAIN_REVISION}/train/{name}"
-        req = Request(url)
-        # A signed CDN redirect must not inherit the private Hub Authorization header.
-        req.add_unredirected_header("Authorization", "Bearer " + token)
-        with urlopen(req, timeout=60) as response:
-            data = response.read()
-        if sha256(data).hexdigest() != expected:
-            raise ValueError(f"Frozen HF train/{name} SHA-256 mismatch")
-        (train / name).write_bytes(data)
-
-
 def install_colab(work):
     """Resolve in a virtual environment that inherits the image's native CUDA wheels."""
-    if metadata.version("torch") != "2.11.0+cu130" or sys.version_info[:2] != (3, 13):
-        raise RuntimeError("Select the Colab 2026.10 GPU runtime (Python 3.13, torch 2.11.0+cu130)")
+    from packaging.requirements import Requirement
+
+    # A short-lived probe releases its CUDA context before setup and the measured jobs.
+    probe = (
+        "import json,torch; from stage2.colab_grpo import gpu_inventory,check_native_torch; "
+        "d=gpu_inventory(); check_native_torch(torch,d); "
+        "print(json.dumps({'torch':str(torch.__version__),'cuda':torch.version.cuda,**d}))"
+    )
+    native = json.loads(subprocess.check_output([sys.executable, "-c", probe], cwd=ROOT, text=True))
     env = work / "venv"
-    subprocess.run([sys.executable, "-m", "venv", "--system-site-packages", str(env)], check=True)
+    # Colab already supplies pip. Inherit it without requiring the image's optional ensurepip bundle.
+    subprocess.run(
+        [sys.executable, "-m", "venv", "--without-pip", "--system-site-packages", str(env)], check=True
+    )
     python = env / "bin/python"
-    protected = {n: metadata.version(n) for n in ("torch", "torchvision", "torchaudio", "triton")}
+    protected = {}
     for dist in metadata.distributions():
         name = dist.metadata["Name"].lower().replace("_", "-")
-        if name.startswith("nvidia-") or name == "cuda-toolkit":
+        if name in {"torch", "torchvision", "torchaudio", "triton", "cuda-toolkit"} or name.startswith(
+            "nvidia-"
+        ):
             protected[name] = dist.version
     constraints = work / "native-cuda.txt"
     constraints.write_text("".join(f"{k}=={v}\n" for k, v in protected.items()), encoding="utf-8")
     plan_path = work / "pip-plan.json"
     pip = [str(python), "-m", "pip", "--disable-pip-version-check", "install"]
-    subprocess.run(
-        [
-            *pip,
-            "--dry-run",
-            "--report",
-            str(plan_path),
-            "-c",
-            str(constraints),
-            "-r",
-            str(ROOT / "stage2/requirements-cpu.txt"),
-            "-r",
-            str(ROOT / "stage2/requirements-colab.txt"),
-        ],
-        check=True,
+    resolve = [
+        *pip,
+        "--dry-run",
+        "--report",
+        str(plan_path),
+        "-c",
+        str(constraints),
+        "-r",
+        str(ROOT / "stage2/requirements-cpu.txt"),
+        "-r",
+        str(ROOT / "stage2/requirements-colab.txt"),
+    ]
+    # The project's audited vLLM wheel uses CUDA 13.0 and publishes its exact Torch ABI in PyPI metadata.
+    # TRL can also generate directly with the training model, with no second engine or vLLM wheel.
+    fast = False
+    if native["cuda"] == "13.0":
+        with urlopen("https://pypi.org/pypi/vllm/0.22.1/json", timeout=30) as response:
+            requires = [Requirement(s) for s in json.load(response)["info"]["requires_dist"]]
+        deps = {
+            r.name: r.specifier
+            for r in requires
+            if r.name in {"torch", "torchvision", "torchaudio"} and (not r.marker or r.marker.evaluate())
+        }
+        fast = "torch" in deps and all(
+            n in protected and protected[n] in spec for n, spec in deps.items()
+        )
+    cuda_tag = "cu" + native["cuda"].replace(".", "")
+    if fast:
+        # This is the same CUDA xFormers binary used with the audited shared vLLM engine.
+        accelerators = [
+            "vllm==0.22.1",
+            "xformers @ https://download.pytorch.org/whl/cu130/"
+            "xformers-0.0.35-py39-none-manylinux_2_28_x86_64.whl"
+            "#sha256=962eb73f7243fb6a6b68ed85ed8f97780070ee35c1be464eefe3299b0382391d",
+        ]
+    else:
+        # xFormers 0.0.36 moved its attention kernels to MSLK. PyPI carries a 0.0.0 placeholder.
+        accelerators = [
+            "--find-links",
+            f"https://download.pytorch.org/whl/{cuda_tag}/mslk/",
+            "--only-binary=mslk",
+            "mslk>=1",
+            "xformers==0.0.36",
+        ]
+    print(
+        f"Native PyTorch {native['torch']}, generation backend: {'vllm' if fast else 'transformers'}",
+        flush=True,
     )
+    subprocess.run([*resolve, *accelerators], check=True)
     plan = json.loads(plan_path.read_bytes())["install"]
     pins = []
     for item in plan:
@@ -90,18 +117,52 @@ def install_colab(work):
     actual = json.loads(subprocess.check_output([str(python), "-c", probe, *protected], text=True))
     if actual != protected:
         raise RuntimeError(f"Native CUDA package mismatch: {actual}")
+    if not fast:
+        kernel = subprocess.check_output(
+            [str(python), "-c", "import importlib.metadata as m; print(m.version('mslk'))"], text=True
+        ).strip()
+        if not kernel.endswith("+" + cuda_tag):
+            raise RuntimeError(f"MSLK wheel {kernel} does not match native PyTorch CUDA {cuda_tag}")
+    # Check native extensions inside the resolved environment before opening a training job.
+    verify = (
+        "from stage2.colab_grpo import check_native_torch,gpu_inventory; import torch; "
+        "check_native_torch(torch,gpu_inventory()); from unsloth import FastLanguageModel; "
+        "from trl import GRPOTrainer"
+    )
+    subprocess.run([str(python), "-c", verify], cwd=ROOT, check=True)
+    (work / "colab-runtime.json").write_text(
+        json.dumps(
+            {
+                "torch": native["torch"],
+                "cuda": native["cuda"],
+                "generation_backend": "vllm" if fast else "transformers",
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     return python
 
 
-def prepare(work, get_secret):
+def prepare(work):
     guard_mounts()
     work.mkdir(parents=True, exist_ok=True)
-    # No secret is requested during dependency installation or passed to a subprocess.
     os.environ.update(
         FI_WORK_DIR=str(work), HF_HUB_DISABLE_IMPLICIT_TOKEN="1", HF_HOME=str(work / "public-hf")
     )
     python = install_colab(work)
-    fetch_inputs(work / "train", get_secret)
+    train = work / "train"
+    train.mkdir(exist_ok=True)
+    if not all(
+        (train / name).is_file() and sha(train / name) == digest for name, digest in TRAIN_HASHES.items()
+    ):
+        subprocess.run(
+            [str(python), "-m", "stage2.check", "prepare-train", "--train", str(train)],
+            cwd=ROOT,
+            check=True,
+        )
+    if any(sha(train / name) != digest for name, digest in TRAIN_HASHES.items()):
+        raise ValueError(f"Reconstructed train archives differ from frozen HF revision {TRAIN_REVISION}")
     node = work / NODE
     if not (node / "bin/npm").is_file():
         with urlopen("https://nodejs.org/dist/v24.22.3/" + NODE + ".tar.xz", timeout=90) as response:
@@ -123,7 +184,7 @@ def prepare(work, get_secret):
 
 def collect_outputs(work):
     """Check both completed jobs and package the Case evidence and receipts before mounting Drive."""
-    from .colab_grpo import MODES
+    from .colab_grpo import GPU_BUDGET_MIB, MODES
 
     files = []
     archive = work / "cases-and-receipts.zip"
@@ -138,6 +199,11 @@ def collect_outputs(work):
             or receipt["optimizer_steps"] != steps
         ):
             raise ValueError(f"Incomplete {mode} receipt")
+        if (
+            receipt.get("within_40gb_budget") is not True
+            or not 0 < receipt["whole_gpu_peak_mib"] <= GPU_BUDGET_MIB
+        ):
+            raise ValueError(f"{mode} lacks a passing whole-GPU memory budget measurement")
         commits.add(receipt["project_commit"])
         run = work / receipt["run_dir"]
         if run.resolve().parent != work.resolve():
